@@ -1,0 +1,20 @@
+#bin directory of codeblocks
+bin/*
+obj/*
+
+tcptrace.cbp
+tcptrace.layout
+
+# Ignore .directory files
+.directory
+
+# Ignore Backup files
+*~
+
+# Ignore other Code Files
+
+#visual studio files
+turbotrace/*
+
+#some specific resources
+resources_nogit/*

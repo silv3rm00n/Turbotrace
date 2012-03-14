@@ -1,0 +1,243 @@
+<html>
+<head>
+<style>
+*
+{
+	margin:0;
+	padding:0;
+}
+body
+{
+	width:100%;
+	height:100%;
+}
+</style>
+</head>
+<body onload="load()" onunload="GUnload()" >
+	
+	<div id="map" style="height:100%; width:100%;"></div>
+	
+	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=AIzaSyABvRyN6w066kQnqmhqEy72iYWhTXBudCM&amp;sensor=false"></script>
+	<script type="text/javascript">
+
+		//<![CDATA[
+		var map = false;
+		
+		//Associative array of markers citywise
+		var city_markers = {};
+		
+		//Array of points
+		var points = [];
+		
+		//array of all markers
+		var point_markers = [];
+		//array of all lines
+		var lines = [];
+		
+		//load google map
+		function load() 
+		{
+			var myOptions = 
+			{
+				center: new google.maps.LatLng(22, 88),
+				zoom: 2,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			};
+			
+			map = new google.maps.Map( document.getElementById("map") , myOptions);
+			document.getElementById("map").google = google;
+		}
+		
+		/*
+			point is a associative array of various things , like country , city , latitude , longitude etc
+		*/
+		function plot(point)
+		{
+			var i = point['node_number'];
+			points[i] = point;
+			
+			var myLatlng = new google.maps.LatLng( point['latitude'] , point['longitude'] ); 
+			var city = point['city'];
+			
+			if(city.length == 0 || typeof point['city'] == undefined || city == '')
+			{
+				point['city'] = city = point['country_code'];
+			}
+						
+			//Existing city
+			if(city in city_markers)
+			{
+				//prevent duplicate ip
+				for(i in city_markers[city]['points'])
+				{
+					p = city_markers[city]['points'][i];
+					if(p['ip_address'] == point['ip_address'])
+					{
+						//Update this point
+						city_markers[city]['points'][i] = point;
+						update_city(city);
+						
+						return;
+					}
+				}
+				
+				city_markers[city]['points'].push(point);
+				update_city(city);
+			}
+			
+			//New city , create new marker
+			else
+			{
+				var marker = new google.maps.Marker({ 
+					position: myLatlng , 
+					title:'Hello World'
+				});
+				
+				marker.setMap( map );
+				
+				point_markers.push(marker);
+				
+				var html = '<div style="font-size:11px;"><b>IP Address</b> : ' + point['ip_address'] + '<br /><b>Country</b> : ' + point['country_code'] + ', <b>City</b> : ' + point['city'] + '</div>';
+				
+				var info_window = new google.maps.InfoWindow({});
+				info_window.setContent(html);
+				
+				google.maps.event.addListener( marker , 'click' , function() 
+				{
+					//close window if already opened
+					if(this.info_window_opened == true)
+					{
+						info_window.close();
+						this.info_window_opened = false;
+					}
+					
+					//open window if not already open
+					else
+					{
+						info_window.open(map , this);
+						this.info_window_opened = true;
+					}
+				});
+				
+				//add to city markers
+				city_markers[city] = {
+					'marker' : marker , 
+					'points' : [point] , 
+					'info_window' : info_window
+				};
+			}
+			
+			//redraw the lines
+			draw_line();
+		}
+		
+		/*
+			update the plots of a particular city
+		*/
+		function update_city(city)
+		{
+			var marker = city_markers[city]['marker'];
+			var city_points = city_markers[city]['points'];
+			var info_window = city_markers[city]['info_window'];
+			
+			//Prepare html of multiple points
+			var html = '<div style="font-size:11px;">';
+			
+			for( i in city_points)
+			{
+				p = city_points[i];
+				html += p['node_number'] + '. <b>IP Address</b> : ' + p['ip_address'] + '<br /><b>Country</b> : ' + p['country_code'] + ', <b>City</b> : ' + p['city'] + '<br /><br />';
+			}
+			
+			html += '</div>';
+			
+			info_window.setContent(html);
+		}
+		
+		/*
+			draw all lines according to node number availability
+		*/
+		function draw_line()
+		{
+			//First erase any existing lines
+			erase_lines();
+			
+			var p = false;
+			
+			//Find the next point relative to this point
+			for(i in points)
+			{
+				if(p == false)
+				{
+					p = points[i];
+					continue;
+				}
+				
+				var npoint = points[i];
+								
+				if(p['city'] != npoint['city'])
+				{
+					var p1 = new google.maps.LatLng(p['latitude'] , p['longitude']);
+					var p2 = new google.maps.LatLng(npoint['latitude'] , npoint['longitude']);
+					
+					var line = new google.maps.Polyline({
+						'path' : [p1 , p2] , 
+						strokeColor: "#FF0000",
+						strokeOpacity: 0.4,
+						strokeWeight: 4
+					});
+					
+					line.setMap( map );
+					
+					lines.push(line);
+				}
+				
+				p = points[i];
+			}
+		}
+		
+		/*
+			Clear all markers
+			clear all lines
+			
+			clear all other data arrays
+		*/
+		function clear_map()
+		{
+			for(i in point_markers)
+			{
+				point_markers[i].setMap(null);
+			}
+			
+			point_markers = new Array();
+			
+			erase_lines();
+			
+			//Clear the points array
+			points = new Array();
+			
+			city_markers = new Object();
+			point_markers = new Array();
+			
+			//Reset the zoom of the map too man
+			
+		}
+		
+		/*
+			Erase all node/point connection lines
+		*/
+		function erase_lines()
+		{
+			for(i in lines)
+			{
+				lines[i].setMap(null);
+			}
+			
+			lines = new Array();
+		}
+
+		//]]>
+		</script>
+</body>
+
+</html>
