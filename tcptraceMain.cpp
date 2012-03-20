@@ -61,6 +61,7 @@ tcptraceFrame::tcptraceFrame(wxFrame *frame, const wxString& title) : wxFrame(fr
 
     @details
     Checks root privileges by creating a raw socket :D
+    If root privileges available then raw socket would be created , otherwise not. Simple!!
 */
 void tcptraceFrame::check_root()
 {
@@ -534,6 +535,10 @@ void tcptraceFrame::_stop_trace()
     }
 }
 
+/**
+    @brief
+    Function to clear the google map
+*/
 void tcptraceFrame::clear_map()
 {
     //Clear the map
@@ -585,6 +590,10 @@ void tcptraceFrame::on_node_dblclick(wxListEvent& event)
     show_info_box(n);
 }
 
+/**
+    @brief
+    Show the information related to a particular node
+*/
 void tcptraceFrame::show_info_box(node n)
 {
     info_box info;
@@ -647,24 +656,37 @@ bool tcptraceFrame::set_node_property(int n , int prop , char *value)
 /**
     @brief
     Plot a node on the Google Map
+
+    @details
+    latitude and longitude must be in C locale otherwise in other locales 9.3 may become 9,3 and will not work
+
 */
 void tcptraceFrame::plot_node(node n)
 {
+    //Force C locale for latitude and longitude numbers
+    std::ostringstream latitude , longitude;
+
+    latitude.imbue( std::locale("C") );
+    latitude<<n.loc.latitude;
+    //wxString str(ss.str());
+
+    longitude.imbue( std::locale("C") );
+    longitude<<n.loc.longitude;
+
     //Plot on map
     wxString js_command = "plot({ip_address : '" + n.ip_address +
         "' , node_number : '" + wxString::Format("%d" , n.node_number + 1) +
         "' , country_code : '" + n.loc.country_code +
         "' , city : '" + n.loc.city +
-        "' , latitude : '" + wxString::Format("%f" , n.loc.latitude) +
-        "' , longitude : '" + wxString::Format("%f" , n.loc.longitude ) +  wxT("'});");
+        //"' , latitude : '" + wxString::Format("%f" , n.loc.latitude) +
+        "' , latitude : '" + latitude.str() +
+        "' , longitude : '" + longitude.str() +  wxT("'});");
 
     //Run the javacsript
     m_browser->RunScript(js_command);
 
     //Log it too!
-    log(wxT("Javascript command : ") + js_command);
-
-    //::wxMessageBox(js_command , wxT("asd"));
+    log( _("Javascript command : ") + js_command);
 
     //Doesnt work
     //m_browser->Execute(js_command);
@@ -745,7 +767,25 @@ void tcptraceFrame::on_save(wxCommandEvent &event)
     for(int i = 0 ; i < MAX_HOPS ; i++)
     {
         n = trace_nodes[i];
-        csv += wxString::Format("%d" , n.node_number) + "," + n.ip_address + "," + n.host_name + "\r\n";
+        csv += wxString::Format("%d" , n.node_number) +
+
+        //ip address
+        "," + n.ip_address +
+
+        //reverse dns host name
+        "," + n.host_name +
+
+        //location information
+        "," + n.loc.country_code +
+        "," + n.loc.city +
+
+        //isp , internet service provider
+        "," + n.who.isp +
+
+        //response time
+        "," + wxString::Format("%.2f" , n.response_time) +
+
+        "\r\n";
     }
 
     wxTextFile f(path);
@@ -773,6 +813,16 @@ void tcptraceFrame::on_save(wxCommandEvent &event)
     }*/
 }
 
+/**
+    @brief
+    Generate the right click context menu for each node
+
+    @details
+    Options are :
+
+    1. View more information
+    2. View whois data
+*/
 void tcptraceFrame::list_menu(wxListEvent &evt)
 {
 	//Get the data of the particular row selected ?

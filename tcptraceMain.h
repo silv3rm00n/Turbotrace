@@ -28,6 +28,8 @@
 #include<wx/wfstream.h>
 #include<wx/textfile.h>
 
+#include <sstream>
+
 #include "tcptraceApp.h"
 #include "include/reverse_dns.h"
 #include "include/logger.h"
